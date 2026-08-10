@@ -44,7 +44,9 @@ export const AuthProvider = ({ children }) => {
                 email: user.email,
                 emailVerified: user.emailVerified,
                 isApproved: data.isApproved,
-                role: data.role
+                role: data.role,
+                name: data.name || '',
+                phone: data.phone || ''
               });
             }
           } else {

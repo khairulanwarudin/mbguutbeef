@@ -1,20 +1,25 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { User, LogOut, Mail, Key, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { User, LogOut, Mail, Key, Eye, EyeOff, Loader2, Edit3, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { updatePassword } from 'firebase/auth';
-import { auth } from '../../config/firebase';
+import { auth, db } from '../../config/firebase';
+import { ref, update } from 'firebase/database';
 import Swal from 'sweetalert2';
 
 const Profile = () => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showProfileForm, setShowProfileForm] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState(currentUser?.name || '');
+  const [phone, setPhone] = useState(currentUser?.phone || '');
   const [showPass, setShowPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   const handleLogout = () => {
     Swal.fire({
@@ -75,6 +80,32 @@ const Profile = () => {
     }
   };
 
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setIsUpdatingProfile(true);
+    try {
+      await update(ref(db, `users/${currentUser.uid}/metadata`), {
+        name: name,
+        phone: phone
+      });
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil',
+        text: 'Profil berhasil diperbarui. Halaman akan dimuat ulang.',
+        background: '#1e293b',
+        color: '#f8fafc',
+        timer: 2000,
+        showConfirmButton: false
+      }).then(() => {
+        window.location.reload();
+      });
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'Gagal', text: error.message, background: '#1e293b', color: '#f8fafc' });
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
   return (
     <div>
       <h2 style={{ margin: '0 0 1rem 0' }}>Profil Saya</h2>
@@ -93,11 +124,17 @@ const Profile = () => {
         }}>
           <User size={40} />
         </div>
-        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem' }}>Informasi Akun</h3>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
+        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem' }}>{currentUser?.name || 'User Tanpa Nama'}</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
           <Mail size={16} />
           <span>{currentUser?.email}</span>
         </div>
+        {currentUser?.phone && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
+            <Phone size={16} />
+            <span>{currentUser.phone}</span>
+          </div>
+        )}
         {/* Role identifier is intentionally hidden for cleaner UI as requested */}
       </div>
 
@@ -105,6 +142,64 @@ const Profile = () => {
         <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--text-muted)' }}>Pengaturan</h4>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {showProfileForm ? (
+            <div className="glass-card" style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)' }}>
+              <form onSubmit={handleUpdateProfile}>
+                <div className="input-group mb-2">
+                  <label>Nama Lengkap</label>
+                  <div style={{ position: 'relative' }}>
+                    <User className="input-icon" size={18} />
+                    <input 
+                      type="text" 
+                      className="input-field" 
+                      placeholder="Masukkan nama lengkap"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="input-group mb-3">
+                  <label>Nomor Telepon</label>
+                  <div style={{ position: 'relative' }}>
+                    <Phone className="input-icon" size={18} />
+                    <input 
+                      type="tel" 
+                      className="input-field" 
+                      placeholder="Contoh: 08123456789"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" className="btn btn-primary" disabled={isUpdatingProfile} style={{ flex: 1, padding: '0.5rem', fontSize: '0.875rem' }}>
+                    {isUpdatingProfile ? <Loader2 className="animate-spin" size={18} style={{ margin: '0 auto' }} /> : 'Simpan Profil'}
+                  </button>
+                  <button type="button" className="btn" onClick={() => setShowProfileForm(false)} style={{ flex: 1, padding: '0.5rem', fontSize: '0.875rem', background: 'rgba(255,255,255,0.1)', color: 'white' }}>
+                    Batal
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setShowProfileForm(true)}
+              className="btn" 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '0.5rem',
+                background: 'rgba(59, 130, 246, 0.1)',
+                color: 'var(--primary)',
+                border: '1px solid rgba(59, 130, 246, 0.2)'
+              }}
+            >
+              <Edit3 size={18} /> Edit Profil
+            </button>
+          )}
+
           {showPasswordForm ? (
             <div className="glass-card" style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)' }}>
               <form onSubmit={handleUpdatePassword}>
