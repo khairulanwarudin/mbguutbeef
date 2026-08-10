@@ -8,7 +8,7 @@ import {
   sendPasswordResetEmail,
   onAuthStateChanged
 } from 'firebase/auth';
-import { ref, set, get, update, push } from 'firebase/database';
+import { ref, set, get, update, push, remove } from 'firebase/database';
 
 const AuthContext = createContext();
 
@@ -27,24 +27,28 @@ export const AuthProvider = ({ children }) => {
           const snapshot = await get(metadataRef);
           if (snapshot.exists()) {
             const data = snapshot.val();
-            setCurrentUser({
-              uid: user.uid,
-              email: user.email,
-              emailVerified: user.emailVerified,
-              isApproved: data.isApproved || false,
-              role: data.role || 'user'
-            });
+            
+            // SECURITY ENFORCEMENT: Pastikan terverifikasi dan disetujui
+            if (!user.emailVerified || (!data.isApproved && data.role !== 'admin')) {
+              await signOut(auth);
+              setCurrentUser(null);
+            } else {
+              setCurrentUser({
+                uid: user.uid,
+                email: user.email,
+                emailVerified: user.emailVerified,
+                isApproved: data.isApproved,
+                role: data.role
+              });
+            }
           } else {
-            setCurrentUser({
-              uid: user.uid,
-              email: user.email,
-              emailVerified: user.emailVerified,
-              isApproved: false,
-              role: 'user'
-            });
+            // Jika data tidak ada di database, tendang keluar
+            await signOut(auth);
+            setCurrentUser(null);
           }
         } catch (error) {
           console.error("Error fetching user metadata:", error);
+          await signOut(auth);
           setCurrentUser(null);
         }
       } else {
@@ -70,6 +74,10 @@ export const AuthProvider = ({ children }) => {
       isApproved: isAdminEmail, // Otomatis true jika email admin
       role: isAdminEmail ? 'admin' : 'user'
     });
+
+    // Cegah Auto-Login! Paksa keluar agar user harus melewati fungsi login()
+    await signOut(auth);
+    
     return userCredential.user;
   };
 
@@ -107,6 +115,26 @@ export const AuthProvider = ({ children }) => {
     await update(ref(db, `users/${uid}/metadata`), {
       isApproved: true
     });
+  };
+
+  const removeUser = async (uid) => {
+    try {
+      // Ambil daftar perangkat yang dimiliki user ini
+      const devicesSnapshot = await get(ref(db, `users/${uid}/devices`));
+      if (devicesSnapshot.exists()) {
+        const devices = devicesSnapshot.val();
+        // Hapus histori data sensor di root /devices/ untuk setiap perangkat
+        for (const deviceId of Object.keys(devices)) {
+          await remove(ref(db, `devices/${deviceId}`));
+          await remove(ref(db, `device_owners/${deviceId}`));
+        }
+      }
+      // Hapus profil dan data kepemilikan perangkat pengguna tersebut
+      await remove(ref(db, `users/${uid}`));
+    } catch (error) {
+      console.error("Error deleting user devices:", error);
+      throw error;
+    }
   };
 
   const getAllUsers = async () => {
@@ -182,6 +210,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     resetPassword,
     approveUser,
+    removeUser,
     getAllUsers,
     createTicket,
     getUserTickets,

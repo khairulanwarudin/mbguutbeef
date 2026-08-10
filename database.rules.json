@@ -1,32 +1,35 @@
 {
   "rules": {
     "users": {
-      ".read": "root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin'",
-      ".write": "root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin'",
+      ".read": "auth != null && root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin'",
       "$uid": {
-        ".read": "auth != null && (root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin' || auth.uid == $uid)",
-        ".write": "auth != null && (root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin' || auth.uid == $uid)",
+        ".read": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin')",
+        "metadata": {
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin' || (!data.exists() && newData.child('role').val() == 'user' && newData.child('isApproved').val() == false) || (!data.exists() && newData.child('role').val() == 'admin' && auth.token.email == 'admin@termoapp.com'))"
+        },
         "devices": {
-          "$mac_address": {
-            "history": {
-              "$dataIndex": {
-                ".validate": "newData.hasChildren(['suhu', 'kelembapan', 'timestamp']) && newData.child('suhu').isNumber() && newData.child('kelembapan').isNumber()"
-              }
-            }
-          }
+          ".write": "auth != null && auth.uid == $uid"
         }
       }
     },
+    "device_owners": {
+      "$deviceId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.val() == auth.uid || root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin')"
+      }
+    },
     "tickets": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": "auth != null && root.child('users').child(auth.uid).child('metadata').child('isApproved').val() == true",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('metadata').child('isApproved').val() == true",
       "$ticket_id": {
         ".validate": "newData.hasChildren(['uid', 'email', 'deviceId', 'description', 'status'])"
       }
     },
     "devices": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      "$deviceId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin' || root.child('users').child(auth.uid).child('devices').child($deviceId).val() != null)",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin'"
+      }
     }
   }
 }

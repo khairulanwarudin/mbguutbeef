@@ -11,14 +11,48 @@ const Dashboard = () => {
   const [currentTemp, setCurrentTemp] = useState(0);
   const [currentHum, setCurrentHum] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(true);
+  const [userDevices, setUserDevices] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState(null);
 
   useEffect(() => {
-    // Kita gunakan Device ID yang sama dengan ESP32
-    const deviceId = 'TERMO_ESP32_01';
-    const historyRef = ref(db, `devices/${deviceId}/history`);
+    if (!currentUser) return;
+    
+    // 1. Ambil daftar alat yang dimiliki oleh user ini
+    const userDevicesRef = ref(db, `users/${currentUser.uid}/devices`);
+    const unsubscribeUser = onValue(userDevicesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const devicesData = snapshot.val();
+        const devicesList = Object.values(devicesData);
+        setUserDevices(devicesList);
+        
+        // Pilih alat pertama secara default jika belum ada yang dipilih
+        if (devicesList.length > 0 && !selectedDevice) {
+          setSelectedDevice(devicesList[0].deviceId);
+        }
+      } else {
+        setUserDevices([]);
+        setSelectedDevice(null);
+        setIsRefreshing(false);
+      }
+    });
+
+    return () => unsubscribeUser();
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!selectedDevice) {
+      setData([]);
+      setCurrentTemp(0);
+      setCurrentHum(0);
+      return;
+    }
+    
+    setIsRefreshing(true);
+    // 2. Dengarkan data histori HANYA untuk alat yang dipilih
+    const historyRef = ref(db, `devices/${selectedDevice}/history`);
     
     // Listener Realtime (Otomatis ter-trigger setiap kali ESP32 mengirim data baru)
-    const unsubscribe = onValue(historyRef, (snapshot) => {
+    const unsubscribeHistory = onValue(historyRef, (snapshot) => {
       setIsRefreshing(false);
       
       if (snapshot.exists()) {
@@ -45,7 +79,8 @@ const Dashboard = () => {
         // Urutkan data berdasarkan waktu (agar grafik bergeser dari kiri ke kanan dengan benar)
         parsedData.sort((a, b) => a.rawTimestamp - b.rawTimestamp);
         
-        setData(parsedData);
+        // Gunakan spread operator agar React benar-benar yakin ini array baru (memicu re-render Recharts)
+        setData([...parsedData]);
         
         // Ambil data terbaru untuk kartu indikator angka besar
         if (parsedData.length > 0) {
@@ -60,9 +95,9 @@ const Dashboard = () => {
       }
     });
 
-    // Bersihkan listener saat pindah halaman
-    return () => unsubscribe();
-  }, []);
+    // Bersihkan listener saat pindah halaman atau ganti alat
+    return () => unsubscribeHistory();
+  }, [selectedDevice]);
 
   return (
     <div>
@@ -71,14 +106,33 @@ const Dashboard = () => {
           <h2 style={{ margin: 0 }}>Dasbor</h2>
           <p style={{ margin: 0, fontSize: '0.875rem' }}>Halo, {currentUser?.email}</p>
         </div>
+        {userDevices.length > 0 && (
+          <select 
+            value={selectedDevice || ''} 
+            onChange={(e) => setSelectedDevice(e.target.value)}
+            className="input-field"
+            style={{ width: 'auto', padding: '0.5rem', fontSize: '0.875rem' }}
+          >
+            {userDevices.map(dev => (
+              <option key={dev.deviceId} value={dev.deviceId}>{dev.name || dev.deviceId}</option>
+            ))}
+          </select>
+        )}
       </div>
 
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-        gap: '1rem',
-        marginBottom: '1.5rem'
-      }}>
+      {!selectedDevice ? (
+        <div className="glass-card text-center" style={{ padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+          <p>Anda belum mendaftarkan alat apapun.</p>
+          <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Silakan masuk ke menu Perangkat untuk menambah alat Anda.</p>
+        </div>
+      ) : (
+        <>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+            gap: '1rem',
+            marginBottom: '1.5rem'
+          }}>
         {/* Suhu Card */}
         <div className="glass-card" style={{ padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div style={{ color: 'var(--warning)', marginBottom: '0.5rem' }}>
@@ -120,24 +174,29 @@ const Dashboard = () => {
           </div>
         </div>
         
-        <div style={{ height: '300px', width: '100%', marginTop: '1rem' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="time" stroke="var(--text-muted)" fontSize={12} tickMargin={10} />
-              <YAxis yAxisId="left" stroke="var(--warning)" fontSize={12} domain={['dataMin - 2', 'dataMax + 2']} />
-              <YAxis yAxisId="right" orientation="right" stroke="var(--primary)" fontSize={12} domain={['dataMin - 5', 'dataMax + 5']} />
-              <Tooltip 
-                contentStyle={{ background: 'var(--bg-gradient-start)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}
-                itemStyle={{ color: '#fff' }}
-              />
-              <Legend wrapperStyle={{ fontSize: '12px', marginTop: '10px' }}/>
-              <Line yAxisId="left" type="monotone" dataKey="suhu" name="Suhu (°C)" stroke="var(--warning)" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
-              <Line yAxisId="right" type="monotone" dataKey="kelembapan" name="Kelembapan (%)" stroke="var(--primary)" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          {/* Wrapper responsif dengan horizontal scroll */}
+          <div style={{ width: '100%', overflowX: 'auto', marginTop: '1rem', paddingBottom: '0.5rem' }}>
+            <div style={{ height: '280px', minWidth: '600px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="time" stroke="var(--text-muted)" fontSize={12} tickMargin={10} />
+                  <YAxis yAxisId="left" stroke="var(--warning)" fontSize={12} domain={['dataMin - 2', 'dataMax + 2']} />
+                  <YAxis yAxisId="right" orientation="right" stroke="var(--primary)" fontSize={12} domain={['dataMin - 5', 'dataMax + 5']} />
+                  <Tooltip 
+                    contentStyle={{ background: 'var(--bg-gradient-start)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '12px', marginTop: '10px' }}/>
+                  <Line yAxisId="left" type="monotone" dataKey="suhu" name="Suhu (°C)" stroke="var(--warning)" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="kelembapan" name="Kelembapan (%)" stroke="var(--primary)" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
+      )}
     </div>
   );
 };
