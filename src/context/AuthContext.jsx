@@ -17,10 +17,16 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const isRegisteringRef = React.useRef(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        if (isRegisteringRef.current) {
+          // Abaikan pengecekan jika sedang dalam proses registrasi
+          return;
+        }
+
         // Ambil metadata dari RTDB
         const metadataRef = ref(db, `users/${user.uid}/metadata`);
         try {
@@ -62,23 +68,34 @@ export const AuthProvider = ({ children }) => {
   const isAdmin = currentUser?.role === 'admin';
 
   const register = async (email, password) => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    await sendEmailVerification(userCredential.user);
-    
-    // Trik Khusus: Jika emailnya adalah admin@termoapp.com, jadikan admin secara otomatis
-    const isAdminEmail = email.toLowerCase() === 'admin@termoapp.com';
-    
-    // Tulis metadata ke DB
-    await set(ref(db, `users/${userCredential.user.uid}/metadata`), {
-      email: email,
-      isApproved: isAdminEmail, // Otomatis true jika email admin
-      role: isAdminEmail ? 'admin' : 'user'
-    });
-
-    // Cegah Auto-Login! Paksa keluar agar user harus melewati fungsi login()
-    await signOut(auth);
-    
-    return userCredential.user;
+    isRegisteringRef.current = true;
+    let userCredential;
+    try {
+      userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await sendEmailVerification(userCredential.user);
+      
+      const isAdminEmail = email.toLowerCase() === 'admin@termoapp.com';
+      
+      // Tulis metadata ke DB
+      await set(ref(db, `users/${userCredential.user.uid}`), {
+        metadata: {
+          email: email,
+          isApproved: isAdminEmail,
+          role: isAdminEmail ? 'admin' : 'user'
+        }
+      });
+      
+      // Cegah Auto-Login! Paksa keluar agar user harus melewati fungsi login()
+      await signOut(auth);
+      return userCredential.user;
+    } catch (error) {
+      if (userCredential && userCredential.user) {
+        await userCredential.user.delete();
+      }
+      throw new Error(`Gagal menyimpan profil: ${error.message}`);
+    } finally {
+      isRegisteringRef.current = false;
+    }
   };
 
   const login = async (email, password) => {
