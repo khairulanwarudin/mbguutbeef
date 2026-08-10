@@ -108,7 +108,10 @@ const Profile = () => {
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 1rem 0' }}>Profil Saya</h2>
+      <h2 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <User size={24} className="text-primary" />
+        My Profile
+      </h2>
       
       <div className="glass-card text-center" style={{ padding: '2rem 1rem', marginBottom: '1.5rem' }}>
         <div style={{

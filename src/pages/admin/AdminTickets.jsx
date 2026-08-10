@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { LifeBuoy, Clock, CheckCircle2 } from 'lucide-react';
+import { LifeBuoy, Clock, CheckCircle2, MessageSquare } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const AdminTickets = () => {
@@ -32,9 +32,11 @@ const AdminTickets = () => {
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <LifeBuoy size={28} className="text-warning" />
-        <h2 style={{ margin: 0 }}>Kelola Pengaduan</h2>
+      <div className="flex justify-between items-center mb-3">
+        <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <MessageSquare size={24} className="text-primary" />
+          Ticket Management
+        </h2>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

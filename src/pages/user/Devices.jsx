@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Cpu, Trash2, Settings, Loader2, Edit2 } from 'lucide-react';
+import { Edit2, Trash2, Plus, X, Search, QrCode, PlaySquare, StopCircle, CheckCircle, Smartphone, Cpu, Settings, Loader2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../config/firebase';
-import { ref, onValue, set, get, remove } from 'firebase/database';
+import { ref, onValue, set, get, remove, query, limitToLast } from 'firebase/database';
 
 const Devices = () => {
   const { currentUser } = useAuth();
   const [devices, setDevices] = useState([]);
+  const [deviceStatuses, setDeviceStatuses] = useState({}); // { deviceId: 'online' | 'offline' }
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showConfig, setShowConfig] = useState(null);
@@ -40,6 +41,45 @@ const Devices = () => {
 
     return () => unsubscribe();
   }, [currentUser]);
+
+  // Cek status online/offline setiap 30 detik berdasarkan data terakhir
+  useEffect(() => {
+    if (devices.length === 0) return;
+
+    const checkStatuses = async () => {
+      const newStatuses = {};
+      for (const device of devices) {
+        let isOnline = false;
+        try {
+          const historyQuery = query(ref(db, `devices/${device.id}/history`), limitToLast(1));
+          const historySnapshot = await get(historyQuery);
+          
+          if (historySnapshot.exists()) {
+            const historyData = historySnapshot.val();
+            const latestKey = Object.keys(historyData)[0];
+            const latestTimestamp = historyData[latestKey].timestamp;
+            
+            // Koreksi timestamp (detik vs milidetik)
+            const timeValue = latestTimestamp > 1000000000000 ? latestTimestamp : latestTimestamp * 1000;
+            
+            // Anggap online jika data terakhir dikirim kurang dari 5 menit (300.000 ms) yang lalu
+            if (Date.now() - timeValue < 300000) {
+              isOnline = true;
+            }
+          }
+        } catch (error) {
+          console.error("Gagal mengecek status:", error);
+        }
+        newStatuses[device.id] = isOnline ? 'online' : 'offline';
+      }
+      setDeviceStatuses(newStatuses);
+    };
+
+    checkStatuses(); // Cek langsung saat load
+    const interval = setInterval(checkStatuses, 30000); // Polling tiap 30 detik
+
+    return () => clearInterval(interval);
+  }, [devices.length]); // Hanya re-run jika jumlah alat berubah
 
   const handleAddDevice = async (e) => {
     e.preventDefault();
@@ -156,7 +196,10 @@ const Devices = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-3">
-        <h2 style={{ margin: 0 }}>Kelola Alat</h2>
+        <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Cpu size={24} className="text-primary" />
+          My Devices
+        </h2>
         <button 
           onClick={() => setShowAddForm(!showAddForm)}
           className="btn btn-primary"
@@ -257,10 +300,10 @@ const Devices = () => {
                         width: '8px', 
                         height: '8px', 
                         borderRadius: '50%', 
-                        background: device.status === 'online' ? 'var(--success)' : 'var(--text-muted)' 
+                        background: deviceStatuses[device.id] === 'online' ? 'var(--success)' : 'var(--text-muted)' 
                       }}></div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {device.status === 'online' ? 'Terhubung' : 'Offline'}
+                        {deviceStatuses[device.id] === 'online' ? 'Terhubung' : 'Offline'}
                       </span>
                     </div>
                   </div>

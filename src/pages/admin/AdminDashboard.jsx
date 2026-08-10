@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldCheck, Cpu, Users } from 'lucide-react';
+import { ShieldCheck, Cpu, Users, PieChart } from 'lucide-react';
 
 const AdminDashboard = () => {
   const { getAllUsers } = useAuth();
@@ -18,9 +18,11 @@ const AdminDashboard = () => {
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <ShieldCheck size={28} className="text-warning" />
-        <h2 style={{ margin: 0 }}>Statistik Sistem</h2>
+      <div className="flex justify-between items-center mb-3">
+        <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <PieChart size={24} className="text-primary" />
+          System Statistics
+        </h2>
       </div>
       
       <p className="text-muted mb-3" style={{ fontSize: '0.875rem' }}>

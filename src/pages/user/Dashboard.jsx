@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../config/firebase';
 import { ref, onValue } from 'firebase/database';
-import { Thermometer, Droplets, RefreshCw, Download } from 'lucide-react';
+import { Thermometer, Droplets, RefreshCw, Download, Activity } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -265,7 +265,10 @@ const Dashboard = () => {
     <div>
       <div className="flex justify-between items-center mb-3">
         <div>
-          <h2 style={{ margin: 0 }}>Dasbor</h2>
+          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Activity size={24} className="text-primary" />
+            Dashboard
+          </h2>
           <p style={{ margin: 0, fontSize: '0.875rem' }}>Halo, {currentUser?.name || currentUser?.email}</p>
         </div>
         {userDevices.length > 0 && (

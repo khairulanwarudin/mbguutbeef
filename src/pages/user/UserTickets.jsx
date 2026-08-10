@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { LifeBuoy, Plus, Clock, CheckCircle2 } from 'lucide-react';
+import { Plus, Clock, CheckCircle2, MessageSquare, LifeBuoy } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const UserTickets = () => {
@@ -42,9 +42,9 @@ const UserTickets = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-3">
-        <div className="flex items-center gap-2">
-          <LifeBuoy size={24} className="text-primary" />
-          <h2 style={{ margin: 0 }}>Pengaduan</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <MessageSquare size={24} className="text-primary" />
+          <h2 style={{ margin: 0 }}>Support Tickets</h2>
         </div>
         <button 
           onClick={() => setShowForm(!showForm)}

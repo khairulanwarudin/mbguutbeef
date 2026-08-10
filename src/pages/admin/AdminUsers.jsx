@@ -79,9 +79,11 @@ const AdminUsers = () => {
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <Users size={28} className="text-primary" />
-        <h2 style={{ margin: 0 }}>Kelola Pengguna</h2>
+      <div className="flex justify-between items-center mb-3">
+        <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Users size={24} className="text-primary" />
+          User Management
+        </h2>
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>

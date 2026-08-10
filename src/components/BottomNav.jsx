@@ -39,22 +39,22 @@ const BottomNav = () => {
       <nav style={navStyle}>
         <NavLink to="/admin" end style={({ isActive }) => getLinkStyle(isActive, 'var(--warning)')}>
           <ShieldCheck size={24} />
-          <span>Dasbor</span>
+          <span>Dashboard</span>
         </NavLink>
         
         <NavLink to="/admin/users" style={({ isActive }) => getLinkStyle(isActive, 'var(--warning)')}>
           <Users size={24} />
-          <span>Pengguna</span>
+          <span>Users</span>
         </NavLink>
 
         <NavLink to="/admin/tickets" style={({ isActive }) => getLinkStyle(isActive, 'var(--warning)')}>
           <LifeBuoy size={24} />
-          <span>Tiket</span>
+          <span>Tickets</span>
         </NavLink>
         
         <NavLink to="/profile" style={({ isActive }) => getLinkStyle(isActive, 'var(--warning)')}>
           <User size={24} />
-          <span>Profil</span>
+          <span>Profile</span>
         </NavLink>
       </nav>
     );
@@ -65,22 +65,22 @@ const BottomNav = () => {
     <nav style={navStyle}>
       <NavLink to="/dashboard" style={({ isActive }) => getLinkStyle(isActive)}>
         <LayoutDashboard size={24} />
-        <span>Dasbor</span>
+        <span>Dashboard</span>
       </NavLink>
       
       <NavLink to="/devices" style={({ isActive }) => getLinkStyle(isActive)}>
         <Cpu size={24} />
-        <span>Alat ESP32</span>
+        <span>Devices</span>
       </NavLink>
 
       <NavLink to="/tickets" style={({ isActive }) => getLinkStyle(isActive)}>
         <LifeBuoy size={24} />
-        <span>Pengaduan</span>
+        <span>Tickets</span>
       </NavLink>
 
       <NavLink to="/profile" style={({ isActive }) => getLinkStyle(isActive)}>
         <User size={24} />
-        <span>Profil</span>
+        <span>Profile</span>
       </NavLink>
     </nav>
   );
