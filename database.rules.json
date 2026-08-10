@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "users": {
+      ".read": "root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin'",
+      ".write": "root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin'",
+      "$uid": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin' || auth.uid == $uid)",
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('metadata').child('role').val() == 'admin' || auth.uid == $uid)",
+        "devices": {
+          "$mac_address": {
+            "history": {
+              "$dataIndex": {
+                ".validate": "newData.hasChildren(['suhu', 'kelembapan', 'timestamp']) && newData.child('suhu').isNumber() && newData.child('kelembapan').isNumber()"
+              }
+            }
+          }
+        }
+      }
+    },
+    "tickets": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$ticket_id": {
+        ".validate": "newData.hasChildren(['uid', 'email', 'deviceId', 'description', 'status'])"
+      }
+    },
+    "devices": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}
